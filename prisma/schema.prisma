@@ -1,0 +1,64 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password_hash String
+  created_at    DateTime @default(now())
+  tasks         Task[]
+  habits        Habit[]
+}
+
+model Task {
+  id          String       @id @default(uuid())
+  user_id     String
+  title       String
+  description String?
+  due_date    DateTime?
+  status      TaskStatus   @default(PENDING)
+  priority    TaskPriority @default(MEDIUM)
+  created_at  DateTime     @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model Habit {
+  id           String     @id @default(uuid())
+  user_id      String
+  title        String
+  target_days  String[]   // Contoh: ["MON", "WED", "FRI"]
+  streak_count Int        @default(0)
+  created_at   DateTime   @default(now())
+
+  user User       @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  logs HabitLog[]
+}
+
+model HabitLog {
+  id        String   @id @default(uuid())
+  habit_id  String
+  date      DateTime @db.Date
+  completed Boolean  @default(false)
+
+  habit Habit @relation(fields: [habit_id], references: [id], onDelete: Cascade)
+
+  @@unique([habit_id, date]) // Mencegah duplikat log di tanggal yang sama
+}
