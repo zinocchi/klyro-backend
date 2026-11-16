@@ -9,6 +9,7 @@ import { sendError, sendSuccess } from './utils/apiResponse.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import taskRoutes from './modules/tasks/task.routes.js';
+import habitRoutes from './modules/habits/habit.routes.js';
 
 const API_PREFIX = '/api/v1';
 
@@ -74,6 +75,7 @@ export function createApp(): Application {
 
   app.use(`${API_PREFIX}/auth`, authRoutes);
   app.use(`${API_PREFIX}/tasks`, taskRoutes);
+  app.use(`${API_PREFIX}/habits`, habitRoutes);
 
   app.use((req: Request, _res: Response, next) => {
     next(AppError.notFound(`Route ${req.method} ${req.originalUrl} not found`));
