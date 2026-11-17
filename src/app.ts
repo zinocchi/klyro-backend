@@ -13,6 +13,10 @@ import habitRoutes from './modules/habits/habit.routes.js';
 
 const API_PREFIX = '/api/v1';
 
+const allowedOrigins = env.CORS_ORIGIN.split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 export function createApp(): Application {
   const app = express();
 
@@ -22,7 +26,15 @@ export function createApp(): Application {
   app.use(helmet());
   app.use(
     cors({
-      origin: true,
+      origin: (origin, callback) => {
+        // Non-browser clients (curl, mobile apps) send no Origin header.
+        if (!origin || allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(AppError.forbidden(`Origin ${origin} is not allowed by CORS`));
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],

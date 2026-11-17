@@ -17,6 +17,12 @@ const envSchema = z.object({
       (value) => /^postgres(ql)?:\/\/.+/.test(value),
       'DATABASE_URL must be a valid postgres connection string',
     ),
+  /** Comma-separated list of browser origins allowed by CORS. */
+  CORS_ORIGIN: z
+    .string()
+    .trim()
+    .min(1)
+    .default('http://localhost:5173,http://localhost:3000,http://localhost:8080'),
 });
 
 export type Env = z.infer<typeof envSchema>;

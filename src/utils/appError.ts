@@ -46,4 +46,8 @@ export class AppError extends Error {
   static internal(message = 'Internal server error'): AppError {
     return new AppError(message, 500);
   }
+
+  static tooManyRequests(message = 'Too many requests, please try again later'): AppError {
+    return new AppError(message, 429);
+  }
 }
