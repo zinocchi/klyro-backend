@@ -25,3 +25,17 @@ export function utcDayRange(dateOnly: string): { start: Date; end: Date } {
 export function todayDateOnly(): string {
   return new Date().toISOString().slice(0, 10);
 }
+
+/** `YYYY-MM` → [first instant of that UTC month, first instant of the next). */
+export function monthRange(month: string): { start: Date; end: Date } {
+  const [year, monthIndex] = month.split('-').map(Number) as [number, number];
+
+  return {
+    start: new Date(Date.UTC(year, monthIndex - 1, 1)),
+    end: new Date(Date.UTC(year, monthIndex, 1)),
+  };
+}
+
+export function currentMonth(): string {
+  return new Date().toISOString().slice(0, 7);
+}

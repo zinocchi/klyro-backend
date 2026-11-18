@@ -1,7 +1,7 @@
-import type { Prisma, Transaction } from '@prisma/client';
+import type { Prisma, Transaction, TransactionType } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../utils/appError.js';
-import { todayDateOnly, toUtcDate, utcDayRange } from '../../utils/date.js';
+import { currentMonth, monthRange, todayDateOnly, toUtcDate } from '../../utils/date.js';
 import type {
   CreateTransactionInput,
   ListTransactionsQuery,
@@ -17,11 +17,9 @@ function buildTransactionWhere(
   if (filters.type) where.type = filters.type;
   if (filters.category) where.category = filters.category;
 
-  if (filters.from || filters.to) {
-    where.date = {
-      ...(filters.from ? { gte: utcDayRange(filters.from).start } : {}),
-      ...(filters.to ? { lt: utcDayRange(filters.to).end } : {}),
-    };
+  if (filters.month) {
+    const { start, end } = monthRange(filters.month);
+    where.date = { gte: start, lt: end };
   }
 
   return where;
@@ -35,6 +33,40 @@ export async function listTransactions(
     where: buildTransactionWhere(userId, filters),
     orderBy: [{ date: 'desc' }, { created_at: 'desc' }],
   });
+}
+
+export interface TransactionSummary {
+  month: string;
+  total_income: number;
+  total_expense: number;
+  balance: number;
+}
+
+export async function getTransactionSummary(
+  userId: string,
+  month: string | undefined,
+): Promise<TransactionSummary> {
+  const targetMonth = month ?? currentMonth();
+  const { start, end } = monthRange(targetMonth);
+
+  const grouped = await prisma.transaction.groupBy({
+    by: ['type'],
+    where: { user_id: userId, date: { gte: start, lt: end } },
+    _sum: { amount: true },
+  });
+
+  const totalOf = (type: TransactionType): number =>
+    grouped.find((row) => row.type === type)?._sum.amount ?? 0;
+
+  const total_income = totalOf('INCOME');
+  const total_expense = totalOf('EXPENSE');
+
+  return {
+    month: targetMonth,
+    total_income,
+    total_expense,
+    balance: total_income - total_expense,
+  };
 }
 
 export async function createTransaction(

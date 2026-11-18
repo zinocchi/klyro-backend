@@ -9,11 +9,20 @@ export const transactionIdParamsSchema = z.object({
   id: z.uuid('Transaction id must be a valid UUID'),
 });
 
+/** `YYYY-MM`, validated as a real calendar month. */
+export const monthSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Month must be in YYYY-MM format');
+
 export const listTransactionsQuerySchema = z.object({
   type: transactionTypeSchema.optional(),
   category: z.string().trim().min(1).max(50).optional(),
-  from: dateOnlySchema.optional(),
-  to: dateOnlySchema.optional(),
+  month: monthSchema.optional(),
+});
+
+export const transactionSummaryQuerySchema = z.object({
+  month: monthSchema.optional(),
 });
 
 export const createTransactionSchema = z.object({
@@ -42,5 +51,6 @@ export const updateTransactionSchema = z
 
 export type TransactionTypeInput = z.infer<typeof transactionTypeSchema>;
 export type ListTransactionsQuery = z.infer<typeof listTransactionsQuerySchema>;
+export type TransactionSummaryQuery = z.infer<typeof transactionSummaryQuerySchema>;
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
 export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;

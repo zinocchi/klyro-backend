@@ -145,9 +145,23 @@ async function main(): Promise<void> {
   assert.equal(expense.status, 201);
   assert.equal(expense.body.data.transaction.date.slice(0, 10), today, 'date should default to today');
 
-  const filteredTx = await api(`/transactions?type=EXPENSE&from=${today}&to=${today}`, { token });
+  const month = today.slice(0, 7);
+
+  const filteredTx = await api(`/transactions?type=EXPENSE&month=${month}`, { token });
   assert.equal(filteredTx.status, 200);
   assert.equal(filteredTx.body.data.transactions.length, 1);
+
+  const summary = await api(`/transactions/summary?month=${month}`, { token });
+  assert.equal(summary.status, 200, `summary failed: ${JSON.stringify(summary.body)}`);
+  assert.equal(summary.body.data.summary.total_income, 5_000_000);
+  assert.equal(summary.body.data.summary.total_expense, 25_000);
+  assert.equal(summary.body.data.summary.balance, 4_975_000);
+
+  assert.equal(
+    (await api('/transactions/summary?month=2026-13', { token })).status,
+    400,
+    'invalid month must be rejected',
+  );
 
   assert.equal(
     (await api('/transactions', { method: 'POST', token, body: { type: 'EXPENSE', amount: 10.5, category: 'X' } })).status,
@@ -186,6 +200,20 @@ async function main(): Promise<void> {
   const notes = await api('/notes', { token });
   assert.equal(notes.status, 200);
   assert.equal(notes.body.data.notes[0].id, noteId, 'pinned note must come first');
+
+  const searchedNotes = await api('/notes?search=LISTRIK', { token });
+  assert.equal(searchedNotes.status, 200);
+  assert.equal(searchedNotes.body.data.notes.length, 1, 'search must be case-insensitive');
+  assert.equal(searchedNotes.body.data.notes[0].id, noteId);
+
+  const emptySearch = await api('/notes?search=tidak-ada-yang-cocok', { token });
+  assert.equal(emptySearch.body.data.notes.length, 0);
+
+  assert.equal(
+    (await api('/notes', { method: 'POST', token, body: { title: 'Tanpa isi', content: '   ' } })).status,
+    400,
+    'content must have at least 1 character',
+  );
 
   const updatedNote = await api(`/notes/${noteId}`, {
     method: 'PATCH',

@@ -8,6 +8,13 @@ export async function listNotes(userId: string, filters: ListNotesQuery): Promis
 
   if (filters.is_pinned !== undefined) where.is_pinned = filters.is_pinned;
 
+  if (filters.search) {
+    where.OR = [
+      { title: { contains: filters.search, mode: 'insensitive' } },
+      { content: { contains: filters.search, mode: 'insensitive' } },
+    ];
+  }
+
   return prisma.note.findMany({
     where,
     orderBy: [{ is_pinned: 'desc' }, { updated_at: 'desc' }],

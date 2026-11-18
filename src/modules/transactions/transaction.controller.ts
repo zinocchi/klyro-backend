@@ -4,12 +4,14 @@ import { sendSuccess } from '../../utils/apiResponse.js';
 import {
   createTransaction,
   deleteTransaction,
+  getTransactionSummary,
   listTransactions,
   updateTransaction,
 } from './transaction.service.js';
 import type {
   CreateTransactionInput,
   ListTransactionsQuery,
+  TransactionSummaryQuery,
   UpdateTransactionInput,
 } from './transaction.schema.js';
 
@@ -32,6 +34,16 @@ export const getTransactions: RequestHandler = async (
   );
 
   sendSuccess(res, { transactions }, { message: 'Transactions retrieved successfully' });
+};
+
+/** GET /api/v1/transactions/summary */
+export const getSummary: RequestHandler = async (req: Request, res: Response): Promise<void> => {
+  const summary = await getTransactionSummary(
+    requireUserId(req),
+    (req.query as TransactionSummaryQuery).month,
+  );
+
+  sendSuccess(res, { summary }, { message: 'Transaction summary retrieved successfully' });
 };
 
 /** POST /api/v1/transactions */

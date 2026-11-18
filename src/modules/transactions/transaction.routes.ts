@@ -5,9 +5,11 @@ import {
   createTransactionSchema,
   listTransactionsQuerySchema,
   transactionIdParamsSchema,
+  transactionSummaryQuerySchema,
   updateTransactionSchema,
 } from './transaction.schema.js';
 import {
+  getSummary,
   getTransactions,
   patchTransaction,
   postTransaction,
@@ -19,6 +21,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', validate({ query: listTransactionsQuerySchema }), getTransactions);
+router.get('/summary', validate({ query: transactionSummaryQuerySchema }), getSummary);
 router.post('/', validate({ body: createTransactionSchema }), postTransaction);
 router.patch(
   '/:id',

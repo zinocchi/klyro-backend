@@ -8,18 +8,19 @@ const pinnedFlag = z.enum(['true', 'false']).transform((value) => value === 'tru
 
 export const listNotesQuerySchema = z.object({
   is_pinned: pinnedFlag.optional(),
+  search: z.string().trim().min(1).max(200).optional(),
 });
 
 export const createNoteSchema = z.object({
   title: z.string().trim().min(1, 'Title is required').max(200, 'Title is too long'),
-  content: z.string().trim().max(20000, 'Content is too long').default(''),
+  content: z.string().trim().min(1, 'Content is required').max(20000, 'Content is too long'),
   is_pinned: z.boolean().optional(),
 });
 
 export const updateNoteSchema = z
   .object({
     title: z.string().trim().min(1, 'Title cannot be empty').max(200, 'Title is too long').optional(),
-    content: z.string().trim().max(20000, 'Content is too long').optional(),
+    content: z.string().trim().min(1, 'Content cannot be empty').max(20000, 'Content is too long').optional(),
     is_pinned: z.boolean().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
