@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dateOnlySchema } from '../../utils/date.js';
 
 export const TASK_STATUSES = ['PENDING', 'IN_PROGRESS', 'COMPLETED'] as const;
 export const TASK_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH'] as const;
@@ -6,15 +7,7 @@ export const TASK_PRIORITIES = ['LOW', 'MEDIUM', 'HIGH'] as const;
 export const taskStatusSchema = z.enum(TASK_STATUSES);
 export const taskPrioritySchema = z.enum(TASK_PRIORITIES);
 
-/** `YYYY-MM-DD`, validated as a real calendar date (not just regex-shaped). */
-export const dateOnlySchema = z
-  .string()
-  .trim()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format')
-  .refine((value) => {
-    const parsed = new Date(`${value}T00:00:00.000Z`);
-    return !Number.isNaN(parsed.getTime()) && parsed.toISOString().startsWith(value);
-  }, 'Date must be a valid calendar date');
+export { dateOnlySchema };
 
 /** Accepts `YYYY-MM-DD` or a full ISO-8601 datetime and yields a `Date`. */
 export const dueDateSchema = z

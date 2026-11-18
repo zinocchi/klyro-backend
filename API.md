@@ -23,7 +23,7 @@ Send `Authorization: Bearer <token>` on every protected route. Token TTL 7 days.
 | Method | Path | Auth | Body / Query |
 |---|---|---|---|
 | GET | `/health` | – | – |
-| POST | `/auth/register` | – | `{ email, password }` (password ≥ 8) |
+| POST | `/auth/register` | – | `{ name, email, password }` (name ≥ 2, password ≥ 8) |
 | POST | `/auth/login` | – | `{ email, password }` |
 | GET | `/auth/me` | Bearer | – |
 | GET | `/tasks` | Bearer | `?status=&priority=&due_date=YYYY-MM-DD` |
@@ -35,19 +35,27 @@ Send `Authorization: Bearer <token>` on every protected route. Token TTL 7 days.
 | PATCH | `/habits/:id` | Bearer | `{ title?, target_days? }` |
 | DELETE | `/habits/:id` | Bearer | – |
 | POST | `/habits/:id/check-in` | Bearer | `{ date: YYYY-MM-DD }` |
+| GET | `/transactions` | Bearer | `?type=&category=&from=YYYY-MM-DD&to=YYYY-MM-DD` |
+| POST | `/transactions` | Bearer | `{ type, amount, category, note?, date? }` |
+| PATCH | `/transactions/:id` | Bearer | any of `type, amount, category, note, date` |
+| DELETE | `/transactions/:id` | Bearer | – |
+| GET | `/notes` | Bearer | `?is_pinned=true\|false` |
+| POST | `/notes` | Bearer | `{ title, content?, is_pinned? }` |
+| PATCH | `/notes/:id` | Bearer | any of `title, content, is_pinned` |
+| DELETE | `/notes/:id` | Bearer | – |
 
-Enums: `status` `PENDING|IN_PROGRESS|COMPLETED` · `priority` `LOW|MEDIUM|HIGH` · `target_days` `MON|TUE|WED|THU|FRI|SAT|SUN` (min 1, unique).
+Enums: `status` `PENDING|IN_PROGRESS|COMPLETED` · `priority` `LOW|MEDIUM|HIGH` · `target_days` `MON|TUE|WED|THU|FRI|SAT|SUN` (min 1, unique) · `type` (transaction) `INCOME|EXPENSE`.
 
 ## Responses
 
 `POST /auth/register` → `201`
 ```json
 { "success": true, "message": "User registered successfully",
-  "data": { "user": { "id": "uuid", "email": "a@b.c", "created_at": "2026-11-16T04:21:38.086Z" },
+  "data": { "user": { "id": "uuid", "email": "a@b.c", "name": "Fikri", "created_at": "2026-11-16T04:21:38.086Z" },
             "token": "eyJhbGciOi..." } }
 ```
 
-`GET /auth/me` → `200` → `data.user` = `{ id, email, created_at }`.
+`GET /auth/me` → `200` → `data.user` = `{ id, email, name, created_at }`.
 
 `GET /tasks` → `200` → `data.tasks[]` = `{ id, user_id, title, description, due_date, status, priority, created_at }`, ordered `due_date` asc (null last), then `created_at` desc.
 
@@ -71,6 +79,24 @@ Enums: `status` `PENDING|IN_PROGRESS|COMPLETED` · `priority` `LOW|MEDIUM|HIGH` 
             "log": { "id": "uuid", "habit_id": "uuid", "date": "2026-11-16T00:00:00.000Z", "completed": true } } }
 ```
 Toggles: missing → `true`, `true` → `false`, `false` → `true`. `streak_count` is recalculated from consecutive completed days up to the check-in date.
+
+`GET /transactions` → `200` → `data.transactions[]` = `{ id, user_id, type, amount, category, note, date, created_at }`, ordered `date` desc then `created_at` desc. `amount` is integer rupiah (no decimals); `date` is `YYYY-MM-DD` midnight UTC. `from`/`to` are inclusive days.
+
+`POST /transactions` → `201` → `data.transaction`. `date` omitted → today (UTC). `amount` must be a positive integer ≤ 1e12.
+
+`PATCH /transactions/:id` → `200` → `data.transaction`. `DELETE /transactions/:id` → `200` → `data: { id }`.
+
+Example:
+```json
+{ "success": true, "message": "Transaction created successfully",
+  "data": { "transaction": { "id": "uuid", "user_id": "uuid", "type": "EXPENSE",
+            "amount": 35000, "category": "Makan", "note": "Bakso",
+            "date": "2026-11-10T00:00:00.000Z", "created_at": "..." } } }
+```
+
+`GET /notes` → `200` → `data.notes[]` = `{ id, user_id, title, content, is_pinned, created_at, updated_at }`, pinned first then `updated_at` desc.
+
+`POST /notes` → `201` → `data.note` (`content` defaults to `""`, `is_pinned` to `false`). `PATCH /notes/:id` → `200` → `data.note`. `DELETE /notes/:id` → `200` → `data: { id }`.
 
 ## Errors
 

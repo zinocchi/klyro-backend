@@ -10,6 +10,7 @@ const SALT_ROUNDS = 10;
 export interface UserProfile {
   id: string;
   email: string;
+  name: string;
   created_at: Date;
 }
 
@@ -21,6 +22,7 @@ export interface AuthResult {
 const profileSelect = {
   id: true,
   email: true,
+  name: true,
   created_at: true,
 } as const;
 
@@ -43,7 +45,7 @@ export async function registerUser(input: RegisterInput): Promise<AuthResult> {
   const password_hash = await bcrypt.hash(input.password, SALT_ROUNDS);
 
   const user = await prisma.user.create({
-    data: { email: input.email, password_hash },
+    data: { name: input.name, email: input.email, password_hash },
     select: profileSelect,
   });
 
@@ -67,6 +69,7 @@ export async function loginUser(input: LoginInput): Promise<AuthResult> {
   const profile: UserProfile = {
     id: user.id,
     email: user.email,
+    name: user.name,
     created_at: user.created_at,
   };
 

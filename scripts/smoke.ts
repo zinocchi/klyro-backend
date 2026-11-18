@@ -34,6 +34,7 @@ async function api(
 
 const email = `smoke.${Date.now()}@example.com`;
 const password = 'Password123';
+const name = 'Smoke Tester';
 const today = new Date().toISOString().slice(0, 10);
 
 async function main(): Promise<void> {
@@ -46,24 +47,33 @@ async function main(): Promise<void> {
   assert.equal(health.body.data.database.status, 'up', 'database should be up');
 
   // register
-  const registered = await api('/auth/register', { method: 'POST', body: { email, password } });
+  const registered = await api('/auth/register', {
+    method: 'POST',
+    body: { name, email, password },
+  });
   assert.equal(registered.status, 201, `register failed: ${JSON.stringify(registered.body)}`);
   assert.equal(registered.body.data.user.email, email);
+  assert.equal(registered.body.data.user.name, name);
   assert.ok(!('password_hash' in registered.body.data.user), 'password_hash must not leak');
   token = registered.body.data.token;
 
   // duplicate register
-  const duplicate = await api('/auth/register', { method: 'POST', body: { email, password } });
+  const duplicate = await api('/auth/register', {
+    method: 'POST',
+    body: { name, email, password },
+  });
   assert.equal(duplicate.status, 409);
 
   // login + me
   const login = await api('/auth/login', { method: 'POST', body: { email, password } });
   assert.equal(login.status, 200);
+  assert.equal(login.body.data.user.name, name);
   token = login.body.data.token;
 
   const me = await api('/auth/me', { token });
   assert.equal(me.status, 200);
   assert.equal(me.body.data.user.email, email);
+  assert.equal(me.body.data.user.name, name);
 
   // unauthorized
   assert.equal((await api('/tasks')).status, 401);
@@ -116,6 +126,77 @@ async function main(): Promise<void> {
   assert.equal(todayHabit.completed, true);
 
   assert.equal((await api(`/habits/${habitId}`, { method: 'DELETE', token })).status, 200);
+
+  // transactions CRUD + filter
+  const income = await api('/transactions', {
+    method: 'POST',
+    token,
+    body: { type: 'INCOME', amount: 5_000_000, category: 'Gaji', date: today },
+  });
+  assert.equal(income.status, 201, `create transaction failed: ${JSON.stringify(income.body)}`);
+  assert.equal(income.body.data.transaction.amount, 5_000_000);
+  const txId: string = income.body.data.transaction.id;
+
+  const expense = await api('/transactions', {
+    method: 'POST',
+    token,
+    body: { type: 'EXPENSE', amount: 25_000, category: 'Makan', note: 'Nasi padang' },
+  });
+  assert.equal(expense.status, 201);
+  assert.equal(expense.body.data.transaction.date.slice(0, 10), today, 'date should default to today');
+
+  const filteredTx = await api(`/transactions?type=EXPENSE&from=${today}&to=${today}`, { token });
+  assert.equal(filteredTx.status, 200);
+  assert.equal(filteredTx.body.data.transactions.length, 1);
+
+  assert.equal(
+    (await api('/transactions', { method: 'POST', token, body: { type: 'EXPENSE', amount: 10.5, category: 'X' } })).status,
+    400,
+    'fractional amount must be rejected',
+  );
+
+  const updatedTx = await api(`/transactions/${txId}`, {
+    method: 'PATCH',
+    token,
+    body: { amount: 6_000_000 },
+  });
+  assert.equal(updatedTx.status, 200);
+  assert.equal(updatedTx.body.data.transaction.amount, 6_000_000);
+
+  assert.equal((await api(`/transactions/${txId}`, { method: 'DELETE', token })).status, 200);
+  assert.equal((await api(`/transactions/${txId}`, { method: 'DELETE', token })).status, 404);
+
+  // notes CRUD + pinned ordering
+  const plainNote = await api('/notes', {
+    method: 'POST',
+    token,
+    body: { title: 'Belanja', content: 'Beras, telur' },
+  });
+  assert.equal(plainNote.status, 201);
+  assert.equal(plainNote.body.data.note.is_pinned, false);
+
+  const pinnedNote = await api('/notes', {
+    method: 'POST',
+    token,
+    body: { title: 'Penting', content: 'Bayar listrik', is_pinned: true },
+  });
+  assert.equal(pinnedNote.status, 201);
+  const noteId: string = pinnedNote.body.data.note.id;
+
+  const notes = await api('/notes', { token });
+  assert.equal(notes.status, 200);
+  assert.equal(notes.body.data.notes[0].id, noteId, 'pinned note must come first');
+
+  const updatedNote = await api(`/notes/${noteId}`, {
+    method: 'PATCH',
+    token,
+    body: { content: 'Bayar listrik sebelum tanggal 20' },
+  });
+  assert.equal(updatedNote.status, 200);
+  assert.ok(updatedNote.body.data.note.updated_at >= updatedNote.body.data.note.created_at);
+
+  assert.equal((await api(`/notes/${noteId}`, { method: 'DELETE', token })).status, 200);
+  assert.equal((await api(`/notes/${noteId}`, { method: 'DELETE', token })).status, 404);
 
   console.log('smoke: all checks passed');
 }
