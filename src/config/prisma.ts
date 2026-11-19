@@ -10,7 +10,7 @@ import { env, isProduction } from './env.js';
  */
 const pool = new pg.Pool({
   connectionString: env.DATABASE_URL,
-  max: 10,
+  max: 3,
   idleTimeoutMillis: 30_000,
   connectionTimeoutMillis: 10_000,
 });
