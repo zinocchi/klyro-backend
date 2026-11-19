@@ -1,3 +1,5 @@
+import "express";
+
 declare namespace Express {
   interface AuthUser {
     id: string;
@@ -6,5 +8,16 @@ declare namespace Express {
 
   interface Request {
     user?: AuthUser;
+  }
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+      };
+    }
   }
 }
