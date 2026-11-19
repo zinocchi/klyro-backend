@@ -1,5 +1,6 @@
 import express, { type Application, type Request, type Response } from 'express';
 import cors from 'cors';
+import './types/express.js';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import { env, isProduction, isTest } from './config/env.js';
