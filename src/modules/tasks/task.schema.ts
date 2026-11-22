@@ -21,10 +21,27 @@ export const taskIdParamsSchema = z.object({
   id: z.uuid('Task id must be a valid UUID'),
 });
 
+export const subtaskSchema = z.object({
+  id: z.string().min(1, 'Subtask id is required'),
+  title: z.string().trim().min(1, 'Subtask title is required').max(200, 'Subtask title is too long'),
+  completed: z.boolean(),
+});
+
+export const subtasksSchema = z.array(subtaskSchema).max(100, 'Too many subtasks');
+
+/** Accepts an ISO-8601 datetime and yields a `Date`. */
+export const reminderAtSchema = z
+  .string()
+  .trim()
+  .min(1, 'Reminder cannot be empty')
+  .refine((value) => !Number.isNaN(Date.parse(value)), 'Reminder must be a valid ISO datetime')
+  .transform((value) => new Date(value));
+
 export const listTasksQuerySchema = z.object({
   status: taskStatusSchema.optional(),
   priority: taskPrioritySchema.optional(),
   due_date: dateOnlySchema.optional(),
+  search: z.string().trim().min(1).max(200).optional(),
 });
 
 export const createTaskSchema = z.object({
@@ -33,6 +50,8 @@ export const createTaskSchema = z.object({
   due_date: dueDateSchema.optional(),
   status: taskStatusSchema.optional(),
   priority: taskPrioritySchema.optional(),
+  subtasks: subtasksSchema.optional(),
+  reminder_at: reminderAtSchema.nullable().optional(),
 });
 
 export const updateTaskSchema = z
@@ -42,6 +61,8 @@ export const updateTaskSchema = z
     due_date: dueDateSchema.nullable().optional(),
     status: taskStatusSchema.optional(),
     priority: taskPrioritySchema.optional(),
+    subtasks: subtasksSchema.optional(),
+    reminder_at: reminderAtSchema.nullable().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field must be provided',
@@ -49,6 +70,7 @@ export const updateTaskSchema = z
 
 export type TaskStatusInput = z.infer<typeof taskStatusSchema>;
 export type TaskPriorityInput = z.infer<typeof taskPrioritySchema>;
+export type Subtask = z.infer<typeof subtaskSchema>;
 export type ListTasksQuery = z.infer<typeof listTasksQuerySchema>;
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;

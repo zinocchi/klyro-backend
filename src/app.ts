@@ -13,6 +13,7 @@ import taskRoutes from './modules/tasks/task.routes.js';
 import habitRoutes from './modules/habits/habit.routes.js';
 import transactionRoutes from './modules/transactions/transaction.routes.js';
 import noteRoutes from './modules/notes/note.routes.js';
+import notificationRoutes from './modules/notifications/notification.routes.js';
 
 const API_PREFIX = '/api/v1';
 
@@ -93,6 +94,7 @@ export function createApp(): Application {
   app.use(`${API_PREFIX}/habits`, habitRoutes);
   app.use(`${API_PREFIX}/transactions`, transactionRoutes);
   app.use(`${API_PREFIX}/notes`, noteRoutes);
+  app.use(`${API_PREFIX}/notifications`, notificationRoutes);
 
   app.use((req: Request, _res: Response, next) => {
     next(AppError.notFound(`Route ${req.method} ${req.originalUrl} not found`));

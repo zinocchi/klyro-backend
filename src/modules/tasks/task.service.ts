@@ -22,6 +22,13 @@ function buildTaskWhere(userId: string, filters: ListTasksQuery): Prisma.TaskWhe
     where.due_date = { gte: start, lt: end };
   }
 
+  if (filters.search) {
+    where.OR = [
+      { title: { contains: filters.search, mode: 'insensitive' } },
+      { description: { contains: filters.search, mode: 'insensitive' } },
+    ];
+  }
+
   return where;
 }
 
@@ -44,6 +51,8 @@ export async function createTask(userId: string, input: CreateTaskInput): Promis
       due_date: input.due_date ?? null,
       status: input.status,
       priority: input.priority,
+      ...(input.subtasks !== undefined && { subtasks: input.subtasks as Prisma.InputJsonValue }),
+      reminder_at: input.reminder_at ?? null,
     },
   });
 }
@@ -73,6 +82,8 @@ export async function updateTask(
   if (input.due_date !== undefined) data.due_date = input.due_date;
   if (input.status !== undefined) data.status = input.status;
   if (input.priority !== undefined) data.priority = input.priority;
+  if (input.subtasks !== undefined) data.subtasks = input.subtasks as Prisma.InputJsonValue;
+  if (input.reminder_at !== undefined) data.reminder_at = input.reminder_at;
 
   return prisma.task.update({ where: { id: taskId }, data });
 }

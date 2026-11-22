@@ -1,8 +1,13 @@
 import type { Request, RequestHandler, Response } from 'express';
 import { AppError } from '../../utils/appError.js';
 import { sendSuccess } from '../../utils/apiResponse.js';
-import { getUserProfile, loginUser, registerUser } from './auth.service.js';
-import type { LoginInput, RegisterInput } from './auth.schema.js';
+import { getUserProfile, loginUser, registerUser, updateUserProfile, changeUserPassword } from './auth.service.js';
+import type {
+  ChangePasswordInput,
+  LoginInput,
+  RegisterInput,
+  UpdateProfileInput,
+} from './auth.schema.js';
 
 /** POST /api/v1/auth/register */
 export const register: RequestHandler = async (req: Request, res: Response): Promise<void> => {
@@ -27,4 +32,26 @@ export const me: RequestHandler = async (req: Request, res: Response): Promise<v
   const user = await getUserProfile(req.user.id);
 
   sendSuccess(res, { user }, { message: 'Authenticated user retrieved' });
+};
+
+/** PATCH /api/v1/auth/me */
+export const patchMe: RequestHandler = async (req: Request, res: Response): Promise<void> => {
+  if (!req.user) {
+    throw AppError.unauthorized('Missing authentication context');
+  }
+
+  const user = await updateUserProfile(req.user.id, req.body as UpdateProfileInput);
+
+  sendSuccess(res, { user }, { message: 'Profile updated successfully' });
+};
+
+/** PATCH /api/v1/auth/password */
+export const patchPassword: RequestHandler = async (req: Request, res: Response): Promise<void> => {
+  if (!req.user) {
+    throw AppError.unauthorized('Missing authentication context');
+  }
+
+  await changeUserPassword(req.user.id, req.body as ChangePasswordInput);
+
+  sendSuccess(res, {}, { message: 'Password updated successfully' });
 };

@@ -1,9 +1,11 @@
 import type { Habit, HabitLog, Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../utils/appError.js';
+import { todayWib } from '../../utils/date.js';
 import type { CheckInInput, CreateHabitInput, UpdateHabitInput } from './habit.schema.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const RECENT_WINDOW_DAYS = 30;
 
 /** `YYYY-MM-DD` (or any Date) → midnight UTC, the representation used by `@db.Date`. */
 function utcMidnight(value: string | Date): Date {
@@ -15,7 +17,7 @@ function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-export type HabitWithCompletion = Habit & { completed: boolean };
+export type HabitWithCompletion = Habit & { completed: boolean; recent_logs: string[] };
 
 export async function listHabits(userId: string, date?: string): Promise<HabitWithCompletion[]> {
   const day = utcMidnight(date ?? todayUtc());
@@ -33,9 +35,28 @@ export async function listHabits(userId: string, date?: string): Promise<HabitWi
     },
   });
 
+  // Completed days within the last 30 days (anchored on today WIB), grouped per habit.
+  const rangeStart = new Date(
+    utcMidnight(todayWib()).getTime() - (RECENT_WINDOW_DAYS - 1) * DAY_MS,
+  );
+
+  const recentLogs = await prisma.habitLog.findMany({
+    where: { habit: { user_id: userId }, completed: true, date: { gte: rangeStart } },
+    select: { habit_id: true, date: true },
+    orderBy: { date: 'asc' },
+  });
+
+  const recentByHabit = new Map<string, string[]>();
+  for (const log of recentLogs) {
+    const list = recentByHabit.get(log.habit_id) ?? [];
+    list.push(log.date.toISOString().slice(0, 10));
+    recentByHabit.set(log.habit_id, list);
+  }
+
   return habits.map(({ logs, ...habit }) => ({
     ...habit,
     completed: logs[0]?.completed === true,
+    recent_logs: recentByHabit.get(habit.id) ?? [],
   }));
 }
 
@@ -46,6 +67,8 @@ export async function createHabit(userId: string, input: CreateHabitInput): Prom
       title: input.title,
       target_days: input.target_days,
       streak_count: 0,
+      best_streak: 0,
+      reminder_time: input.reminder_time ?? null,
     },
   });
 }
@@ -72,6 +95,7 @@ export async function updateHabit(
 
   if (input.title !== undefined) data.title = input.title;
   if (input.target_days !== undefined) data.target_days = input.target_days;
+  if (input.reminder_time !== undefined) data.reminder_time = input.reminder_time;
 
   return prisma.habit.update({ where: { id: habitId }, data });
 }
@@ -126,7 +150,18 @@ export async function checkInHabit(
   habitId: string,
   input: CheckInInput,
 ): Promise<CheckInResult> {
-  await assertHabitOwnership(userId, habitId);
+  const habitRecord = await prisma.habit.findFirst({
+    where: { id: habitId, user_id: userId },
+    select: { id: true, best_streak: true },
+  });
+
+  if (!habitRecord) {
+    throw AppError.notFound('Habit not found');
+  }
+
+  if (input.date > todayWib()) {
+    throw AppError.badRequest('Cannot log future dates');
+  }
 
   const date = utcMidnight(input.date);
 
@@ -147,7 +182,10 @@ export async function checkInHabit(
 
   const habit = await prisma.habit.update({
     where: { id: habitId },
-    data: { streak_count: streakCount },
+    data: {
+      streak_count: streakCount,
+      best_streak: Math.max(habitRecord.best_streak, streakCount),
+    },
   });
 
   return { habit, log };

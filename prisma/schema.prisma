@@ -24,15 +24,31 @@ enum TransactionType {
 }
 
 model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  name          String   @default("User") // default only backfills legacy rows; register enforces it
-  password_hash String
-  created_at    DateTime @default(now())
-  tasks         Task[]
-  habits        Habit[]
-  transactions  Transaction[]
-  notes         Note[]
+  id                 String   @id @default(uuid())
+  email              String   @unique
+  name               String   @default("User") // default only backfills legacy rows; register enforces it
+  password_hash      String
+  monthly_budget     Int?
+  language           String   @default("id")
+  daily_reminder_time String?
+  created_at         DateTime @default(now())
+  tasks              Task[]
+  habits             Habit[]
+  transactions       Transaction[]
+  notes              Note[]
+  notifications      Notification[]
+}
+
+model Notification {
+  id         String   @id @default(uuid())
+  user_id    String
+  type       String // BUDGET_ALERT | TASK_REMINDER | HABIT_REMINDER | NOTE_REMINDER | DAILY_FINANCE
+  title      String
+  message    String
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model Task {
@@ -43,6 +59,8 @@ model Task {
   due_date    DateTime?
   status      TaskStatus   @default(PENDING)
   priority    TaskPriority @default(MEDIUM)
+  subtasks    Json         @default("[]")
+  reminder_at DateTime?
   created_at  DateTime     @default(now())
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
@@ -67,6 +85,8 @@ model Note {
   title      String
   content    String
   is_pinned  Boolean  @default(false)
+  tag        String?
+  remind_at  DateTime?
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
@@ -79,6 +99,8 @@ model Habit {
   title        String
   target_days  String[]   // Contoh: ["MON", "WED", "FRI"]
   streak_count Int        @default(0)
+  best_streak  Int        @default(0)
+  reminder_time String?
   created_at   DateTime   @default(now())
 
   user User       @relation(fields: [user_id], references: [id], onDelete: Cascade)

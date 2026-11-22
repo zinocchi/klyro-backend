@@ -26,6 +26,18 @@ export function todayDateOnly(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+const WIB_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+/** Today's `YYYY-MM-DD` in Indonesia Western Time (Asia/Jakarta, UTC+7). */
+export function todayWib(): string {
+  return new Date(Date.now() + WIB_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/** `YYYY-MM` of the current WIB day. */
+export function currentMonthWib(): string {
+  return todayWib().slice(0, 7);
+}
+
 /** `YYYY-MM` → [first instant of that UTC month, first instant of the next). */
 export function monthRange(month: string): { start: Date; end: Date } {
   const [year, monthIndex] = month.split('-').map(Number) as [number, number];

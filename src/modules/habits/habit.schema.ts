@@ -24,6 +24,12 @@ export const habitIdParamsSchema = z.object({
   id: z.uuid('Habit id must be a valid UUID'),
 });
 
+/** `HH:mm`, 24-hour. */
+export const reminderTimeSchema = z
+  .string()
+  .trim()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Time must be in HH:mm format');
+
 export const listHabitsQuerySchema = z.object({
   date: dateOnlySchema.optional(),
 });
@@ -31,12 +37,14 @@ export const listHabitsQuerySchema = z.object({
 export const createHabitSchema = z.object({
   title: z.string().trim().min(1, 'Title is required').max(200, 'Title is too long'),
   target_days: targetDaysSchema,
+  reminder_time: reminderTimeSchema.nullable().optional(),
 });
 
 export const updateHabitSchema = z
   .object({
     title: z.string().trim().min(1, 'Title cannot be empty').max(200, 'Title is too long').optional(),
     target_days: targetDaysSchema.optional(),
+    reminder_time: reminderTimeSchema.nullable().optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field must be provided',

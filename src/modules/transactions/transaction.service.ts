@@ -1,7 +1,8 @@
 import type { Prisma, Transaction, TransactionType } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../utils/appError.js';
-import { currentMonth, monthRange, todayDateOnly, toUtcDate } from '../../utils/date.js';
+import { currentMonth, monthRange, todayDateOnly, todayWib, toUtcDate } from '../../utils/date.js';
+import { evaluateBudgetAlert } from '../notifications/notification.service.js';
 import type {
   CreateTransactionInput,
   ListTransactionsQuery,
@@ -73,7 +74,11 @@ export async function createTransaction(
   userId: string,
   input: CreateTransactionInput,
 ): Promise<Transaction> {
-  return prisma.transaction.create({
+  if (input.date && input.date > todayWib()) {
+    throw AppError.badRequest('Cannot log future dates');
+  }
+
+  const transaction = await prisma.transaction.create({
     data: {
       user_id: userId,
       type: input.type,
@@ -83,6 +88,12 @@ export async function createTransaction(
       date: toUtcDate(input.date ?? todayDateOnly()),
     },
   });
+
+  if (transaction.type === 'EXPENSE') {
+    await evaluateBudgetAlert(userId, transaction.date);
+  }
+
+  return transaction;
 }
 
 async function assertTransactionOwnership(userId: string, transactionId: string): Promise<void> {

@@ -1,9 +1,15 @@
 import bcrypt from 'bcryptjs';
 import jwt, { type SignOptions } from 'jsonwebtoken';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { env } from '../../config/env.js';
 import { AppError } from '../../utils/appError.js';
-import type { LoginInput, RegisterInput } from './auth.schema.js';
+import type {
+  ChangePasswordInput,
+  LoginInput,
+  RegisterInput,
+  UpdateProfileInput,
+} from './auth.schema.js';
 
 const SALT_ROUNDS = 10;
 
@@ -11,6 +17,9 @@ export interface UserProfile {
   id: string;
   email: string;
   name: string;
+  monthly_budget: number | null;
+  language: string;
+  daily_reminder_time: string | null;
   created_at: Date;
 }
 
@@ -23,6 +32,9 @@ const profileSelect = {
   id: true,
   email: true,
   name: true,
+  monthly_budget: true,
+  language: true,
+  daily_reminder_time: true,
   created_at: true,
 } as const;
 
@@ -70,6 +82,9 @@ export async function loginUser(input: LoginInput): Promise<AuthResult> {
     id: user.id,
     email: user.email,
     name: user.name,
+    monthly_budget: user.monthly_budget,
+    language: user.language,
+    daily_reminder_time: user.daily_reminder_time,
     created_at: user.created_at,
   };
 
@@ -87,4 +102,42 @@ export async function getUserProfile(userId: string): Promise<UserProfile> {
   }
 
   return user;
+}
+
+export async function updateUserProfile(
+  userId: string,
+  input: UpdateProfileInput,
+): Promise<UserProfile> {
+  const data: Prisma.UserUpdateInput = {};
+
+  if (input.name !== undefined) data.name = input.name;
+  if (input.monthly_budget !== undefined) data.monthly_budget = input.monthly_budget;
+  if (input.language !== undefined) data.language = input.language;
+  if (input.daily_reminder_time !== undefined) data.daily_reminder_time = input.daily_reminder_time;
+
+  return prisma.user.update({ where: { id: userId }, data, select: profileSelect });
+}
+
+export async function changeUserPassword(
+  userId: string,
+  input: ChangePasswordInput,
+): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { password_hash: true },
+  });
+
+  if (!user) {
+    throw AppError.unauthorized('Authenticated user no longer exists');
+  }
+
+  const matches = await bcrypt.compare(input.current_password, user.password_hash);
+
+  if (!matches) {
+    throw AppError.unauthorized('Current password is incorrect');
+  }
+
+  const password_hash = await bcrypt.hash(input.new_password, SALT_ROUNDS);
+
+  await prisma.user.update({ where: { id: userId }, data: { password_hash } });
 }

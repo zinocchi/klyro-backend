@@ -28,6 +28,8 @@ export async function createNote(userId: string, input: CreateNoteInput): Promis
       title: input.title,
       content: input.content,
       is_pinned: input.is_pinned ?? false,
+      tag: input.tag ?? null,
+      remind_at: input.remind_at ?? null,
     },
   });
 }
@@ -55,6 +57,8 @@ export async function updateNote(
   if (input.title !== undefined) data.title = input.title;
   if (input.content !== undefined) data.content = input.content;
   if (input.is_pinned !== undefined) data.is_pinned = input.is_pinned;
+  if (input.tag !== undefined) data.tag = input.tag;
+  if (input.remind_at !== undefined) data.remind_at = input.remind_at;
 
   return prisma.note.update({ where: { id: noteId }, data });
 }
