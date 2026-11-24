@@ -2,10 +2,12 @@ import type { Request, RequestHandler, Response } from 'express';
 import { AppError } from '../../utils/appError.js';
 import { sendSuccess } from '../../utils/apiResponse.js';
 import {
+  createNotification,
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
 } from './notification.service.js';
+import type { CreateNotificationInput } from './notification.schema.js';
 
 function requireUserId(req: Request): string {
   if (!req.user) {
@@ -20,6 +22,16 @@ export const getNotifications: RequestHandler = async (req: Request, res: Respon
   const result = await listNotifications(requireUserId(req));
 
   sendSuccess(res, result, { message: 'Notifications retrieved successfully' });
+};
+
+/** POST /api/v1/notifications */
+export const postNotification: RequestHandler = async (req: Request, res: Response): Promise<void> => {
+  const notification = await createNotification(
+    requireUserId(req),
+    req.body as CreateNotificationInput,
+  );
+
+  sendSuccess(res, { notification }, { statusCode: 201, message: 'Notification created successfully' });
 };
 
 /** PATCH /api/v1/notifications/:id/read */

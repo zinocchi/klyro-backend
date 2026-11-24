@@ -2,12 +2,28 @@ import type { Notification } from '@prisma/client';
 import { prisma } from '../../config/prisma.js';
 import { AppError } from '../../utils/appError.js';
 import { monthRange } from '../../utils/date.js';
+import type { CreateNotificationInput } from './notification.schema.js';
 
 const LIST_LIMIT = 50;
 
 export interface NotificationList {
   notifications: Notification[];
   unread_count: number;
+}
+
+/** Stores a client-triggered notification (e.g. a fired task reminder) for the user. */
+export async function createNotification(
+  userId: string,
+  input: CreateNotificationInput,
+): Promise<Notification> {
+  return prisma.notification.create({
+    data: {
+      user_id: userId,
+      type: input.type,
+      title: input.title,
+      message: input.message,
+    },
+  });
 }
 
 export async function listNotifications(userId: string): Promise<NotificationList> {

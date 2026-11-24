@@ -37,6 +37,29 @@ export const reminderAtSchema = z
   .refine((value) => !Number.isNaN(Date.parse(value)), 'Reminder must be a valid ISO datetime')
   .transform((value) => new Date(value));
 
+/**
+ * Accepts an array of ISO-8601 datetime strings and yields canonical ISO-8601 strings.
+ * Stored as-is in the `reminders` JSON column (array of strings).
+ */
+export const remindersSchema = z
+  .array(
+    z
+      .string()
+      .trim()
+      .min(1, 'Reminder cannot be empty')
+      .refine((value) => !Number.isNaN(Date.parse(value)), 'Reminder must be a valid ISO datetime')
+      .transform((value) => new Date(value).toISOString()),
+  )
+  .max(50, 'Too many reminders');
+
+/** Hours between repeats (e.g. `1`, `2`, `4`) or `null` for a one-off reminder. */
+export const reminderIntervalSchema = z
+  .number('Reminder interval must be a number')
+  .int('Reminder interval must be a whole number of hours')
+  .positive('Reminder interval must be greater than zero')
+  .max(8760, 'Reminder interval is too large')
+  .nullable();
+
 export const listTasksQuerySchema = z.object({
   status: taskStatusSchema.optional(),
   priority: taskPrioritySchema.optional(),
@@ -52,6 +75,8 @@ export const createTaskSchema = z.object({
   priority: taskPrioritySchema.optional(),
   subtasks: subtasksSchema.optional(),
   reminder_at: reminderAtSchema.nullable().optional(),
+  reminders: remindersSchema.optional(),
+  reminder_interval: reminderIntervalSchema.optional(),
 });
 
 export const updateTaskSchema = z
@@ -63,6 +88,8 @@ export const updateTaskSchema = z
     priority: taskPrioritySchema.optional(),
     subtasks: subtasksSchema.optional(),
     reminder_at: reminderAtSchema.nullable().optional(),
+    reminders: remindersSchema.optional(),
+    reminder_interval: reminderIntervalSchema.optional(),
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'At least one field must be provided',
@@ -71,6 +98,7 @@ export const updateTaskSchema = z
 export type TaskStatusInput = z.infer<typeof taskStatusSchema>;
 export type TaskPriorityInput = z.infer<typeof taskPrioritySchema>;
 export type Subtask = z.infer<typeof subtaskSchema>;
+export type Reminders = z.infer<typeof remindersSchema>;
 export type ListTasksQuery = z.infer<typeof listTasksQuerySchema>;
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;

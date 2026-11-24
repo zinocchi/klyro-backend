@@ -29,8 +29,8 @@ Send `Authorization: Bearer *** on every protected route. Token TTL 7 days.
 | PATCH | `/auth/me` | Bearer | `{ name?, monthly_budget?, language?, daily_reminder_time? }` |
 | PATCH | `/auth/password` | Bearer | `{ current_password, new_password }` (new_password ≥ 8) |
 | GET | `/tasks` | Bearer | `?status=&priority=&due_date=YYYY-MM-DD&search=` |
-| POST | `/tasks` | Bearer | `{ title, description?, due_date?, status?, priority?, subtasks?, reminder_at? }` |
-| PATCH | `/tasks/:id` | Bearer | any of `title, description, due_date, status, priority, subtasks, reminder_at` |
+| POST | `/tasks` | Bearer | `{ title, description?, due_date?, status?, priority?, subtasks?, reminder_at?, reminders?, reminder_interval? }` |
+| PATCH | `/tasks/:id` | Bearer | any of `title, description, due_date, status, priority, subtasks, reminder_at, reminders, reminder_interval` |
 | DELETE | `/tasks/:id` | Bearer | – |
 | GET | `/habits` | Bearer | `?date=YYYY-MM-DD` (default: today UTC) |
 | POST | `/habits` | Bearer | `{ title, target_days, reminder_time? }` |
@@ -47,6 +47,7 @@ Send `Authorization: Bearer *** on every protected route. Token TTL 7 days.
 | PATCH | `/notes/:id` | Bearer | any of `title, content, is_pinned, tag, remind_at` |
 | DELETE | `/notes/:id` | Bearer | – |
 | GET | `/notifications` | Bearer | – |
+| POST | `/notifications` | Bearer | `{ type, title, message }` (`type` = one of the notification enums above) |
 | PATCH | `/notifications/:id/read` | Bearer | – |
 | PATCH | `/notifications/read-all` | Bearer | – |
 
@@ -56,6 +57,8 @@ Enums: `status` `PENDING|IN_PROGRESS|COMPLETED` · `priority` `LOW|MEDIUM|HIGH` 
 
 - `reminder_time` / `daily_reminder_time`: `"HH:mm"` 24-hour (e.g. `"07:30"`), or `null`.
 - `reminder_at` / `remind_at`: ISO-8601 datetime string (e.g. `"2026-11-25T09:00:00.000Z"`), or `null`.
+- `reminders` (task): array of ISO-8601 datetime strings, e.g. `["2026-11-25T09:00:00.000Z"]`, max 50 items. Defaults to `[]`; values are normalized to full ISO-8601 (`...Z`) on write.
+- `reminder_interval` (task): repeat interval in whole hours, positive (e.g. `1`, `2`, `4`), or `null` for a one-off reminder. Defaults to `null`.
 - `subtasks`: array of `{ id: string, title: string, completed: boolean }` (max 100).
 - `monthly_budget`: integer rupiah ≥ 0, or `null`.
 - `tag`: string ≤ 50 chars, or `null`.
@@ -84,9 +87,9 @@ Enums: `status` `PENDING|IN_PROGRESS|COMPLETED` · `priority` `LOW|MEDIUM|HIGH` 
 
 `PATCH /auth/password` → `200` → `data: {}`. Wrong `current_password` → `401` with message `"Current password is incorrect"`.
 
-`GET /tasks` → `200` → `data.tasks[]` = `{ id, user_id, title, description, due_date, status, priority, subtasks, reminder_at, created_at }`, ordered `due_date` asc (null last), then `created_at` desc. `search` matches `title` or `description`, case-insensitive.
+`GET /tasks` → `200` → `data.tasks[]` = `{ id, user_id, title, description, due_date, status, priority, subtasks, reminder_at, reminders, reminder_interval, created_at }`, ordered `due_date` asc (null last), then `created_at` desc. `search` matches `title` or `description`, case-insensitive.
 
-`POST /tasks` → `201` → `data.task` (`subtasks` defaults to `[]`, `reminder_at` defaults to `null`).
+`POST /tasks` → `201` → `data.task` (`subtasks` defaults to `[]`, `reminder_at` defaults to `null`, `reminders` defaults to `[]`, `reminder_interval` defaults to `null`).
 
 `PATCH /tasks/:id` → `200` → `data.task`. `DELETE /tasks/:id` → `200` → `data: { id }`.
 
@@ -144,6 +147,15 @@ Example:
             "unread_count": 1 } }
 ```
 Ordered `created_at` desc, limit 50.
+
+`POST /notifications` → `201` → `data.notification`
+```json
+{ "success": true, "message": "Notification created successfully",
+  "data": { "notification": { "id": "uuid", "user_id": "uuid", "type": "TASK_REMINDER",
+            "title": "Task reminder", "message": "Bayar listrik jatuh tempo jam 09:00",
+            "is_read": false, "created_at": "..." } } }
+```
+Body `{ type, title, message }`. `type` must be one of the notification enums; `title` (1–200 chars) and `message` (1–2000 chars) are trimmed. The row always belongs to the authenticated user and starts with `is_read: false`. Intended for reminders the client fires locally (e.g. a task reminder) so they can be persisted and listed later.
 
 `PATCH /notifications/:id/read` → `200` → `data.notification` (`is_read: true`). Not found / other user → `404`.
 

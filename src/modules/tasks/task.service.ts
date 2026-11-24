@@ -53,6 +53,8 @@ export async function createTask(userId: string, input: CreateTaskInput): Promis
       priority: input.priority,
       ...(input.subtasks !== undefined && { subtasks: input.subtasks as Prisma.InputJsonValue }),
       reminder_at: input.reminder_at ?? null,
+      reminders: (input.reminders ?? []) as Prisma.InputJsonValue,
+      reminder_interval: input.reminder_interval ?? null,
     },
   });
 }
@@ -84,6 +86,8 @@ export async function updateTask(
   if (input.priority !== undefined) data.priority = input.priority;
   if (input.subtasks !== undefined) data.subtasks = input.subtasks as Prisma.InputJsonValue;
   if (input.reminder_at !== undefined) data.reminder_at = input.reminder_at;
+  if (input.reminders !== undefined) data.reminders = input.reminders as Prisma.InputJsonValue;
+  if (input.reminder_interval !== undefined) data.reminder_interval = input.reminder_interval;
 
   return prisma.task.update({ where: { id: taskId }, data });
 }

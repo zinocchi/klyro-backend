@@ -52,16 +52,18 @@ model Notification {
 }
 
 model Task {
-  id          String       @id @default(uuid())
-  user_id     String
-  title       String
-  description String?
-  due_date    DateTime?
-  status      TaskStatus   @default(PENDING)
-  priority    TaskPriority @default(MEDIUM)
-  subtasks    Json         @default("[]")
-  reminder_at DateTime?
-  created_at  DateTime     @default(now())
+  id                String       @id @default(uuid())
+  user_id           String
+  title             String
+  description       String?
+  due_date          DateTime?
+  status            TaskStatus   @default(PENDING)
+  priority          TaskPriority @default(MEDIUM)
+  subtasks          Json         @default("[]")
+  reminder_at       DateTime?
+  reminders         Json         @default("[]") // array of ISO-8601 datetime strings
+  reminder_interval Int? // repeat interval in hours: 1, 2, 4, ... or null (no repeat)
+  created_at        DateTime     @default(now())
 
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
